@@ -1,0 +1,6 @@
+[pull]
+        rebase = true
+[push]
+        default = current
+[alias]
+        ol = log --pretty=oneline
