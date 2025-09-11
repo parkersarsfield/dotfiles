@@ -1,9 +1,7 @@
 ;; parker's emacs configuration
 
 ;; On macOS, I typically run `emacs-plus` with some options
-;; brew install emacs-plus --with-no-frame-refocus --with-native-comp --with-savchenkovaleriy-big-sur-3d-icon
-;; --with-no-frame-refocus doesn't focus the next frame once emacs is closed
-;; --with-native-comp for better perf
+;; brew install emacs-plus@30 --with-savchenkovaleriy-big-sur-3d-icon
 ;; --with-savchenkovaleriy-big-sur-3d-icon for pretty icon
 
 ;;; GENERAL / STARTUP
@@ -90,15 +88,23 @@ The DWIM behaviour of this command is as follows:
 
 
 ;;; APPEARANCE
+(setq frame-resize-pixelwise t) ; get rid of annoying gaps
 (tool-bar-mode -1) ;; Disable toolbar at the top of the screen
 (scroll-bar-mode -1) ;; Disable scroll bars (might turn these back on)
 (menu-bar-mode 1) ;; Keep the menu bar enabled on MacOS (might disable this in other envs)
 (global-display-line-numbers-mode 1) ;; enable line numbers
-(setq display-line-numbers-type 'visual) ;; don't account for folded code, this is nice for vim motions
-(use-package nord-theme
+(setq display-line-numbers-type 'visual) ;; don't account for folded code, this is nce for vim motions
+(add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)) ;; transparent titlebar
+(add-to-list 'default-frame-alist '(ns-appearance . dark)) ;; dark mode
+(use-package modus-themes
   :ensure t
   :config
-  (load-theme 'nord :no-confirm-loading))
+  (load-theme 'modus-vivendi-tinted :no-confirm-loading))
+;; dissabled while testing out modus themes
+;; (use-package nord-theme
+;;   :ensure t
+;;   :config
+;;   (load-theme 'nord :no-confirm-loading))
 
 ;; use preferred fonts
 (let ((mono-spaced-font "Monospace")
@@ -132,62 +138,77 @@ The DWIM behaviour of this command is as follows:
 (global-set-key (kbd "C-c l") #'org-store-link)
 (global-set-key (kbd "C-c a") #'org-agenda)
 (global-set-key (kbd "C-c c") #'org-capture)
+
 ;; ignore scheduled tasks in the any view
 (setq org-agenda-todo-ignore-scheduled 'future)
-;; The parent *Projects heading has a :project: tag. All level two headings under this are to
-;; be evaluated as stuck projects
-(setq org-stuck-projects
-'("+projects+LEVEL=2"
- ("TODO" "NEXT" "NEXTACTION")
- nil ""))
+
+;; Custom capture templates - currently have some custom work templates configured
+(setq org-capture-templates
+      '(("i" "Inbox" entry (file+headline "~/path/to/gtd.org" "Inbox")
+	 "* INBOX %?\n %i\n %a")
+        ("r" "Review request" entry (file+headline "~/path/to/gtd.org" "Todos")
+	 "* TODO review %?\nSCHEDULED: %t")
+        ("t" "Today task" entry (file+headline "~/path/to/gtd.org" "Todos")
+	 "* TODO %?\nSCHEDULED: %t")
+	))
+
+;; allow refiling everywhere!
+(setq org-refile-targets '((nil :maxlevel . 9)
+			   (org-agenda-files :maxlevel . 9)))
+(setq org-outline-path-complete-in-steps nil) ; Refile in a single go
+(setq org-refile-use-outline-path t) ; Use full paths for refiling
 
 ;; WIP - custom weekly review view
 ;; from https://gettingthingsdone.com/wp-content/uploads/2014/10/Weekly_Review_Checklist.pdf
 (setq org-agenda-custom-commands
       '(("W" "Weekly Review"
          (
-	  ;; brain dump
-	  ;; () TODO - brain dump into inbox? agenda view? :thinking:
-
-	  ;; Clear inboxes
-	  ;; () TODO - can I have that here?
-
-	  ;; Review open actions, make sure they are still relevant
+	  ;; this "-" pattern is used to show steps for things not actionable in emacs yet.
+	  (todo "-"
+		((org-agenda-overriding-header "Brain dump open thoughts into apple notes.")))
+	  (todo "-"
+		((org-agenda-overriding-header "Process inboxes to zero:\n  -Fastmail\n  -Gmail\n  -Apple Note\n  -Physical Inbox")))
 	  (todo "TODO"
-		((org-agenda-overriding-header "Review open actions")))
-
-	  ;; review prev and upcoming calendar data
-	  ;; () TODO add all calendar data to org mode
-	    ;; some command like this... (agenda "" ((org-agenda-span 7)))
-
-	  ;; Review waiting for
+		((org-agenda-overriding-header "Review open TODOs; make sure all are still relevant.")))
+	  (todo "-"
+		;; () TODO add all calendar data to org mode
+		;; some command like this... (agenda "" ((org-agenda-span 7)))
+		((org-agenda-overriding-header "Review calendar data https://app.fastmail.com/calendar/month")))
           (todo "WAITING"
-		((org-agenda-overriding-header "Review 'Waiting For'")))
-
-	  ;; Review all active projects, make sure they're actionable and relevant
-          (stuck ""
-		((org-agenda-overriding-header "Add next actions to stuck projects")))
-          (tags "+projects+LEVEL=2"
-		((org-agenda-overriding-header "Review Projects")))
-
+		((org-agenda-overriding-header "Review WAITING list.")))
+           (tags "+projects+LEVEL=2"
+	   	((org-agenda-overriding-header "Review projects; make sure each have a next action")))
+	  (todo "-"
+		;; Review Someday / maybe lists
+		;; () TODO, implement this
+		((org-agenda-overriding-header "Review Someday / Maybe")))
 	  )
-
-	  ;; Review Someday / maybe lists
-	  ;; () TODO, implement this
 	 )
 	("E" "Execution" 
 	 (
-	  (agenda "" ((org-agenda-span 7))))
+	  (agenda "" ((org-agenda-span 7) (org-agenda-overriding-header "This week...")))
+	  (todo "TODO"
+		((org-agenda-overriding-header "Next actions")))
+	 )
 	 ))
 	 )
-(use-package org-roam
+
+;; denote
+(use-package denote
   :ensure t
-  :init
-  (setq org-roam-v2-ack t)
-  :custom
-  (org-roam-directory "~/Sync/org-roam")
-  :bind (("C-c n l" . org-roam-buffer-toggle)
-         ("C-c n f" . org-roam-node-find)
-         ("C-c n i" . org-roam-node-insert))
+  :hook (dired-mode . denote-dired-mode)
+  :bind
+  (("C-c n n" . denote)
+   ("C-c n r" . denote-rename-file)
+   ("C-c n l" . denote-link)
+   ("C-c n b" . denote-backlinks)
+   ("C-c n d" . denote-dired)
+   ("C-c n g" . denote-grep))
   :config
-  (org-roam-setup))
+  (setq denote-directory (expand-file-name "~/docs/notes"))
+
+  ;; Automatically rename Denote buffers when opening them so that
+  ;; instead of their long file name they have, for example, a literal
+  ;; "[D]" followed by the file's title.  Read the doc string of
+  ;; `denote-rename-buffer-format' for how to modify this.
+  (denote-rename-buffer-mode 1))
