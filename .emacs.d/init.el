@@ -218,3 +218,188 @@ The DWIM behaviour of this command is as follows:
   ;; "[D]" followed by the file's title.  Read the doc string of
   ;; `denote-rename-buffer-format' for how to modify this.
   (denote-rename-buffer-mode 1))
+
+;; EXPERIMENTAL
+(setq treesit-language-source-alist
+      '((bash "https://github.com/tree-sitter/tree-sitter-bash")
+	(cmake "https://github.com/uyha/tree-sitter-cmake")
+	(css "https://github.com/tree-sitter/tree-sitter-css")
+	(elisp "https://github.com/Wilfred/tree-sitter-elisp")
+	(go "https://github.com/tree-sitter/tree-sitter-go")
+	(html "https://github.com/tree-sitter/tree-sitter-html")
+	(javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+	(json "https://github.com/tree-sitter/tree-sitter-json")
+	(make "https://github.com/alemuller/tree-sitter-make")
+	(markdown "https://github.com/ikatyang/tree-sitter-markdown")
+	(python "https://github.com/tree-sitter/tree-sitter-python")
+	(toml "https://github.com/tree-sitter/tree-sitter-toml")
+	(tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+	(typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+	(yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+
+(use-package treesit
+  :mode (("\\.tsx\\'" . tsx-ts-mode)
+         ("\\.js\\'"  . typescript-ts-mode)
+         ("\\.mjs\\'" . typescript-ts-mode)
+         ("\\.mts\\'" . typescript-ts-mode)
+         ("\\.cjs\\'" . typescript-ts-mode)
+         ("\\.ts\\'"  . typescript-ts-mode)
+         ("\\.jsx\\'" . tsx-ts-mode)
+         ("\\.json\\'" .  json-ts-mode)
+         ("\\.Dockerfile\\'" . dockerfile-ts-mode)
+         ("\\.prisma\\'" . prisma-ts-mode)
+         ;; More modes defined here...
+         )
+  :preface
+  ;; Optional, but recommended. Tree-sitter enabled major modes are
+  ;; distinct from their ordinary counterparts.
+  ;;
+  ;; You can remap major modes with `major-mode-remap-alist'. Note
+  ;; that this does *not* extend to hooks! Make sure you migrate them
+  ;; also
+  (dolist (mapping
+           '((python-mode . python-ts-mode)
+             (css-mode . css-ts-mode)
+             (typescript-mode . typescript-ts-mode)
+             (js-mode . typescript-ts-mode)
+             (js2-mode . typescript-ts-mode)
+             (c-mode . c-ts-mode)
+             (c++-mode . c++-ts-mode)
+             (c-or-c++-mode . c-or-c++-ts-mode)
+             (bash-mode . bash-ts-mode)
+             (css-mode . css-ts-mode)
+             (json-mode . json-ts-mode)
+             (js-json-mode . json-ts-mode)
+             (sh-mode . bash-ts-mode)
+             (sh-base-mode . bash-ts-mode)))
+    (add-to-list 'major-mode-remap-alist mapping))
+  )
+
+;; 2025-09-10: treesitter seems to be working! next up I should try to get basic lsp going for typescript dev.
+(use-package magit
+  :ensure t)
+
+
+
+;; prevent the warning buffer from popping up always...
+(add-to-list 'display-buffer-alist
+             '("\\`\\*\\(Warnings\\|Compile-Log\\)\\*\\'"
+               (display-buffer-no-window)
+               (allow-no-window . t)))
+
+
+;;; eglot
+;; Minimal Eglot configuration for TypeScript testing
+;; Eglot is built-in for Emacs 29+
+(require 'eglot)
+
+;; Auto-start eglot for your tree-sitter TypeScript modes
+(add-hook 'typescript-ts-mode-hook 'eglot-ensure)
+(add-hook 'tsx-ts-mode-hook 'eglot-ensure)
+(add-hook 'js-ts-mode-hook 'eglot-ensure) ; for JavaScript files too
+
+;; Basic eglot settings
+(setq eglot-autoshutdown t)  ; Shutdown server when last buffer is killed
+(setq eglot-sync-connect 1)  ; Wait 1 second for server connection
+
+;; Eglot keybindings (using C-c e prefix to avoid your org C-c l binding)
+(with-eval-after-load 'eglot
+  (define-key eglot-mode-map (kbd "C-c e r") 'eglot-rename)
+  (define-key eglot-mode-map (kbd "C-c e f") 'eglot-format-buffer)
+  (define-key eglot-mode-map (kbd "C-c e a") 'eglot-code-actions)
+  (define-key eglot-mode-map (kbd "C-c e o") 'eglot-code-action-organize-imports)
+  (define-key eglot-mode-map (kbd "C-c e h") 'eldoc-doc-buffer))
+
+;; Make sure you have it installed: npm install -g typescript-language-server typescript
+
+;;;; Code Completion
+(use-package corfu
+  :ensure t
+  ;; Optional customizations
+  :custom
+  (corfu-cycle t)                 ; Allows cycling through candidates
+  (corfu-auto t)                  ; Enable auto completion
+  (corfu-auto-prefix 2)           ; Minimum length of prefix for completion
+  (corfu-auto-delay 0)            ; No delay for completion
+  (corfu-popupinfo-delay '(0.5 . 0.2))  ; Automatically update info popup after that numver of seconds
+  (corfu-preview-current 'insert) ; insert previewed candidate
+  (corfu-preselect 'prompt)
+  (corfu-on-exact-match nil)      ; Don't auto expand tempel snippets
+  ;; Optionally use TAB for cycling, default is `corfu-complete'.
+  :bind (:map corfu-map
+              ("M-SPC"      . corfu-insert-separator)
+              ("TAB"        . corfu-next)
+              ([tab]        . corfu-next)
+              ("S-TAB"      . corfu-previous)
+              ([backtab]    . corfu-previous)
+              ("S-<return>" . corfu-insert)
+              ("RET"        . corfu-insert))
+
+  :init
+  (global-corfu-mode)
+  (corfu-history-mode)
+  (corfu-popupinfo-mode) ; Popup completion info
+  :config
+  (add-hook 'eshell-mode-hook
+            (lambda () (setq-local corfu-quit-at-boundary t
+                                   corfu-quit-no-match t
+                                   corfu-auto nil)
+              (corfu-mode))
+            nil
+            t))
+
+(use-package flycheck
+  :ensure t
+  :init (global-flycheck-mode)
+  :bind (:map flycheck-mode-map
+              ("M-n" . flycheck-next-error) ; optional but recommended error navigation
+              ("M-p" . flycheck-previous-error)))
+
+(use-package vterm
+  :ensure t)
+
+
+;;; TYPESCRIPT
+(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
+(add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode))
+
+
+;; WANT TO DO EVENTUALLY
+;; app shortcut for emacs.app
+
+;;; APHELEIA
+;; auto-format different source code files extremely intelligently
+
+(use-package apheleia
+  :ensure t
+  :config  (setq apheleia-formatters-respect-indent-level nil)
+  ;; Add pnpm prettier formatter
+  ;; (add-to-list 'apheleia-formatters
+  ;;              '(prettier-pnpm . ("pnpm" "exec" "prettier" "--stdin-filepath" filepath)))
+  
+  ;; Associate it with TypeScript and other modes
+  ;; (add-to-list 'apheleia-mode-alist '(typescript-ts-mode . prettier-pnpm))
+  ;; (add-to-list 'apheleia-mode-alist '(js-mode . prettier-pnpm))
+  ;; (add-to-list 'apheleia-mode-alist '(json-mode . prettier-pnpm))
+  ;; (add-to-list 'apheleia-mode-alist '(css-mode . prettier-pnpm))
+  
+  ;; Enable globally
+  (apheleia-global-mode +1))
+
+;; set path from shell https://www.emacswiki.org/emacs/ExecPath
+(defun set-exec-path-from-shell-PATH ()
+  "Set up Emacs' `exec-path' and PATH environment variable to match
+that used by the user's shell.
+
+This is particularly useful under Mac OS X and macOS, where GUI
+apps are not started from a shell."
+  (interactive)
+  (let ((path-from-shell (replace-regexp-in-string
+			  "[ \t\n]*$" "" (shell-command-to-string
+					  "$SHELL --login -c 'echo $PATH'"
+					  ))))
+    (setenv "PATH" path-from-shell)
+    (setq exec-path (split-string path-from-shell path-separator))))
+(set-exec-path-from-shell-PATH)
+
+
