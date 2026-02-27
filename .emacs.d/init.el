@@ -24,6 +24,12 @@
 ;; Don't show the splash screen upon startup, maybe I should replace this with something nicer...
 (setq inhibit-startup-message t)
 
+;; backup files & cleanup
+(setq backup-directory-alist `(("." . ,(expand-file-name "tmp/backups/" user-emacs-directory))))
+;; auto-save-mode doesn't create the path automatically!
+(make-directory (expand-file-name "tmp/auto-saves/" user-emacs-directory) t)
+(setq auto-save-list-file-prefix (expand-file-name "tmp/auto-saves/sessions/" user-emacs-directory)
+      auto-save-file-name-transforms `((".*" ,(expand-file-name "tmp/auto-saves/" user-emacs-directory) t)))
 
 ;;; KEYBINDINGS
 ;; Enable Evil Mode
@@ -96,10 +102,10 @@ The DWIM behaviour of this command is as follows:
 (setq display-line-numbers-type 'visual) ;; don't account for folded code, this is nce for vim motions
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t)) ;; transparent titlebar
 (add-to-list 'default-frame-alist '(ns-appearance . dark)) ;; dark mode
-(use-package modus-themes
+(use-package ef-themes
   :ensure t
   :config
-  (load-theme 'modus-vivendi-tinted :no-confirm-loading))
+  (load-theme 'ef-owl :no-confirm-loading))
 ;; dissabled while testing out modus themes
 ;; (use-package nord-theme
 ;;   :ensure t
@@ -161,7 +167,7 @@ The DWIM behaviour of this command is as follows:
 ;; WIP - custom weekly review view
 ;; from https://gettingthingsdone.com/wp-content/uploads/2014/10/Weekly_Review_Checklist.pdf
 (setq org-agenda-custom-commands
-      '(("W" "Weekly Review"
+      '(("2" "Weekly Review"
          (
 	  ;; this "-" pattern is used to show steps for things not actionable in emacs yet.
 	  (todo "-"
@@ -176,7 +182,7 @@ The DWIM behaviour of this command is as follows:
 		((org-agenda-overriding-header "Review calendar data https://app.fastmail.com/calendar/month")))
           (todo "WAITING"
 		((org-agenda-overriding-header "Review WAITING list.")))
-           (tags "+projects+LEVEL=2"
+          (tags "+projects+LEVEL=2"
 	   	((org-agenda-overriding-header "Review projects; make sure each have a next action")))
 	  (todo "-"
 		;; Review Someday / maybe lists
@@ -184,14 +190,14 @@ The DWIM behaviour of this command is as follows:
 		((org-agenda-overriding-header "Review Someday / Maybe")))
 	  )
 	 )
-	("E" "Execution" 
+	("1" "Execution"
 	 (
 	  (agenda "" ((org-agenda-span 7) (org-agenda-overriding-header "This week...")))
 	  (todo "TODO"
 		((org-agenda-overriding-header "Next actions")))
-	 )
+	  )
 	 ))
-	 )
+      )
 
 ;; denote
 (use-package denote
