@@ -9,6 +9,7 @@
 (require 'package)
 (package-initialize)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
+(add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/"))
 
 ;; setup use-package
 (when (< emacs-major-version 29)
@@ -71,7 +72,6 @@ The DWIM behaviour of this command is as follows:
     (keyboard-quit))))
 (define-key global-map (kbd "C-g") #'prot/keyboard-quit-dwim)
 
-
 ;;; MINI BUFFER
 (use-package vertico ;; display minibuffer commands verically
   :ensure t
@@ -89,10 +89,6 @@ The DWIM behaviour of this command is as follows:
   :ensure nil ; built in
   :hook (after-init . savehist-mode))
 
-
-;; consider setting up corfu
-
-
 ;;; APPEARANCE
 (setq frame-resize-pixelwise t) ; get rid of annoying gaps
 (tool-bar-mode -1) ;; Disable toolbar at the top of the screen
@@ -105,15 +101,11 @@ The DWIM behaviour of this command is as follows:
 (use-package ef-themes
   :ensure t
   :config
-  (load-theme 'ef-owl :no-confirm-loading))
-;; dissabled while testing out modus themes
-;; (use-package nord-theme
-;;   :ensure t
-;;   :config
-;;   (load-theme 'nord :no-confirm-loading))
+  (load-theme 'ef-owl :no-confirm))
 
 ;; use preferred fonts
-(let ((mono-spaced-font "Monospace")
+;; Install JetBrains Mono font: brew install --cask font-jetbrains-mono
+(let ((mono-spaced-font "JetBrains Mono")
       (proportionately-spaced-font "Sans"))
   (set-face-attribute 'default nil :family mono-spaced-font :height 175)
   (set-face-attribute 'fixed-pitch nil :family mono-spaced-font :height 1.0)
@@ -138,7 +130,6 @@ The DWIM behaviour of this command is as follows:
   :hook
   (dired-mode . nerd-icons-dired-mode))
 
-
 ;;; ORG MODE
 ;; global binds to use org stuff in any mode
 (global-set-key (kbd "C-c l") #'org-store-link)
@@ -150,11 +141,11 @@ The DWIM behaviour of this command is as follows:
 
 ;; Custom capture templates - currently have some custom work templates configured
 (setq org-capture-templates
-      '(("i" "Inbox" entry (file+headline "~/path/to/gtd.org" "Inbox")
+      '(("i" "Inbox" entry (file+headline "~/sync/org/gtd.org" "Inbox")
 	 "* INBOX %?\n %i\n %a")
-        ("r" "Review request" entry (file+headline "~/path/to/gtd.org" "Todos")
+        ("r" "Review request" entry (file+headline "~/sync/org/gtd.org" "Todos")
 	 "* TODO review %?\nSCHEDULED: %t")
-        ("t" "Today task" entry (file+headline "~/path/to/gtd.org" "Todos")
+        ("t" "Today task" entry (file+headline "~/sync/org/gtd.org" "Todos")
 	 "* TODO %?\nSCHEDULED: %t")
 	))
 
@@ -167,18 +158,29 @@ The DWIM behaviour of this command is as follows:
 ;; WIP - custom weekly review view
 ;; from https://gettingthingsdone.com/wp-content/uploads/2014/10/Weekly_Review_Checklist.pdf
 (setq org-agenda-custom-commands
-      '(("2" "Weekly Review"
-         (
-	  ;; this "-" pattern is used to show steps for things not actionable in emacs yet.
-	  (todo "-"
+      '(
+	("1" "Execution"
+	 ((agenda "" ((org-agenda-span 7)
+		      (org-agenda-overriding-header "This week...")
+		      (org-agenda-skip-function
+		       '(org-agenda-skip-entry-if 'todo '("WAIT")))))
+	  (todo "IN_PROGRESS"
+		((org-agenda-overriding-header "WIP")))
+	  (todo "WAITING"
+		((org-agenda-overriding-header "Waiting")))
+	  (todo "TODO"
+		((org-agenda-overriding-header "Next actions")
+		 (org-agenda-skip-function
+		  '(org-agenda-skip-entry-if 'scheduled))))))
+	("2" "Weekly Review"
+	 ;; note: this "-" pattern is used to show steps for things not actionable in emacs yet.
+	 ((todo "-"
 		((org-agenda-overriding-header "Brain dump open thoughts into apple notes.")))
 	  (todo "-"
 		((org-agenda-overriding-header "Process inboxes to zero:\n  -Fastmail\n  -Gmail\n  -Apple Note\n  -Physical Inbox")))
 	  (todo "TODO"
 		((org-agenda-overriding-header "Review open TODOs; make sure all are still relevant.")))
 	  (todo "-"
-		;; () TODO add all calendar data to org mode
-		;; some command like this... (agenda "" ((org-agenda-span 7)))
 		((org-agenda-overriding-header "Review calendar data https://app.fastmail.com/calendar/month")))
           (todo "WAITING"
 		((org-agenda-overriding-header "Review WAITING list.")))
@@ -187,17 +189,8 @@ The DWIM behaviour of this command is as follows:
 	  (todo "-"
 		;; Review Someday / maybe lists
 		;; () TODO, implement this
-		((org-agenda-overriding-header "Review Someday / Maybe")))
-	  )
-	 )
-	("1" "Execution"
-	 (
-	  (agenda "" ((org-agenda-span 7) (org-agenda-overriding-header "This week...")))
-	  (todo "TODO"
-		((org-agenda-overriding-header "Next actions")))
-	  )
-	 ))
-      )
+		((org-agenda-overriding-header "Review Someday / Maybe")))))
+	))
 
 ;; denote
 (use-package denote
@@ -275,21 +268,18 @@ The DWIM behaviour of this command is as follows:
     (add-to-list 'major-mode-remap-alist mapping))
   )
 
-;; 2025-09-10: treesitter seems to be working! next up I should try to get basic lsp going for typescript dev.
 (use-package magit
   :ensure t)
-
-
 
 ;; prevent the warning buffer from popping up always...
 (add-to-list 'display-buffer-alist
              '("\\`\\*\\(Warnings\\|Compile-Log\\)\\*\\'"
-               (display-buffer-no-window)
-               (allow-no-window . t)))
-
+	       (display-buffer-no-window)
+	       (allow-no-window . t)))
 
 ;;; eglot
 ;; Minimal Eglot configuration for TypeScript testing
+
 ;; Eglot is built-in for Emacs 29+
 (require 'eglot)
 
@@ -310,6 +300,7 @@ The DWIM behaviour of this command is as follows:
   (define-key eglot-mode-map (kbd "C-c e o") 'eglot-code-action-organize-imports)
   (define-key eglot-mode-map (kbd "C-c e h") 'eldoc-doc-buffer))
 
+;; Note: Eglot will automatically find typescript-language-server
 ;; Make sure you have it installed: npm install -g typescript-language-server typescript
 
 ;;;; Code Completion
@@ -327,13 +318,13 @@ The DWIM behaviour of this command is as follows:
   (corfu-on-exact-match nil)      ; Don't auto expand tempel snippets
   ;; Optionally use TAB for cycling, default is `corfu-complete'.
   :bind (:map corfu-map
-              ("M-SPC"      . corfu-insert-separator)
-              ("TAB"        . corfu-next)
-              ([tab]        . corfu-next)
-              ("S-TAB"      . corfu-previous)
-              ([backtab]    . corfu-previous)
-              ("S-<return>" . corfu-insert)
-              ("RET"        . corfu-insert))
+	      ("M-SPC"      . corfu-insert-separator)
+	      ("TAB"        . corfu-next)
+	      ([tab]        . corfu-next)
+	      ("S-TAB"      . corfu-previous)
+	      ([backtab]    . corfu-previous)
+	      ("S-<return>" . corfu-insert)
+	      ("RET"        . corfu-insert))
 
   :init
   (global-corfu-mode)
@@ -344,7 +335,7 @@ The DWIM behaviour of this command is as follows:
             (lambda () (setq-local corfu-quit-at-boundary t
                                    corfu-quit-no-match t
                                    corfu-auto nil)
-              (corfu-mode))
+	      (corfu-mode))
             nil
             t))
 
@@ -352,12 +343,11 @@ The DWIM behaviour of this command is as follows:
   :ensure t
   :init (global-flycheck-mode)
   :bind (:map flycheck-mode-map
-              ("M-n" . flycheck-next-error) ; optional but recommended error navigation
-              ("M-p" . flycheck-previous-error)))
+	      ("M-n" . flycheck-next-error) ; optional but recommended error navigation
+	      ("M-p" . flycheck-previous-error)))
 
 (use-package vterm
   :ensure t)
-
 
 ;;; TYPESCRIPT
 (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
@@ -368,8 +358,7 @@ The DWIM behaviour of this command is as follows:
 ;; app shortcut for emacs.app
 
 ;;; APHELEIA
-;; auto-format different source code files extremely intelligently
-
+;; auto-format different source code files
 (use-package apheleia
   :ensure t
   :config  (setq apheleia-formatters-respect-indent-level nil)
@@ -403,3 +392,8 @@ apps are not started from a shell."
 (set-exec-path-from-shell-PATH)
 
 
+;;; LOAD WORK CONFIG
+;; Load any work specific configurations that shouldn't live in github
+(let ((work-config (expand-file-name "work-config.el" user-emacs-directory)))
+  (when (file-exists-p work-config)
+    (load work-config)))
